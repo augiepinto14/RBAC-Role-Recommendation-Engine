@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RBAC Role Mining Tool</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                    <rect width="36" height="36" rx="8" fill="#1a56db"/>
+                    <path d="M10 18h16M18 10v16M12 12l12 12M24 12L12 24" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.3"/>
+                    <circle cx="18" cy="18" r="6" stroke="#fff" stroke-width="2" fill="none"/>
+                    <circle cx="18" cy="18" r="2" fill="#fff"/>
+                </svg>
+                <div>
+                    <h1>RBAC Role Mining Tool</h1>
+                    <p class="subtitle">Automated Role Grouping Recommendations</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Data Status Panel -->
+        <section class="panel status-panel">
+            <h2>Data Status</h2>
+            <div class="status-grid">
+                <div class="status-card" id="hr-status">
+                    <div class="status-icon loading" id="hr-icon">&#8987;</div>
+                    <div class="status-info">
+                        <span class="status-label">HR Employee Data</span>
+                        <span class="status-value" id="hr-count">Loading...</span>
+                    </div>
+                </div>
+                <div class="status-card" id="ent-status">
+                    <div class="status-icon loading" id="ent-icon">&#8987;</div>
+                    <div class="status-info">
+                        <span class="status-label">Entitlement Records</span>
+                        <span class="status-value" id="ent-count">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Panel -->
+        <section class="panel upload-panel">
+            <h2>Upload User List</h2>
+            <p class="panel-desc">Upload a CSV file containing Employee IDs to analyze. The file should have an "Employee ID" column.</p>
+            <div class="upload-area" id="upload-area">
+                <div class="upload-content">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                        <path d="M24 32V16m0 0l-8 8m8-8l8 8" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M40 30v6a4 4 0 01-4 4H12a4 4 0 01-4-4v-6" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <p>Drag & drop your CSV file here, or <label for="file-input" class="upload-link">browse</label></p>
+                    <p class="upload-hint">Accepts .csv files with an "Employee ID" column</p>
+                    <input type="file" id="file-input" accept=".csv" hidden>
+                </div>
+            </div>
+            <div class="upload-actions">
+                <button id="sample-btn" class="btn btn-secondary">Use Sample Data (50 users)</button>
+                <span class="upload-file-name" id="file-name"></span>
+            </div>
+        </section>
+
+        <!-- Configuration Panel -->
+        <section class="panel config-panel">
+            <h2>Analysis Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label for="threshold-slider">Commonality Threshold</label>
+                    <div class="slider-row">
+                        <input type="range" id="threshold-slider" min="50" max="100" value="80" step="5">
+                        <span class="slider-value" id="threshold-value">80%</span>
+                    </div>
+                    <p class="config-hint">Minimum % of users in a group that must share an entitlement for it to be included in the recommended role.</p>
+                </div>
+                <div class="config-item">
+                    <label for="min-group">Minimum Group Size</label>
+                    <div class="slider-row">
+                        <input type="range" id="min-group" min="2" max="20" value="2" step="1">
+                        <span class="slider-value" id="min-group-value">2</span>
+                    </div>
+                    <p class="config-hint">Minimum number of users required to form a role group.</p>
+                </div>
+            </div>
+            <button id="analyze-btn" class="btn btn-primary" disabled>Run Analysis</button>
+        </section>
+
+        <!-- Progress Indicator -->
+        <section class="panel progress-panel" id="progress-panel" hidden>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p class="progress-text" id="progress-text">Analyzing...</p>
+        </section>
+
+        <!-- Results Dashboard -->
+        <section class="panel results-panel" id="results-panel" hidden>
+            <div class="results-header">
+                <h2>Role Recommendations</h2>
+                <div class="results-actions">
+                    <button id="export-csv-btn" class="btn btn-secondary">Export CSV</button>
+                    <button id="export-json-btn" class="btn btn-secondary">Export JSON</button>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="summary-grid" id="summary-grid">
+                <div class="summary-card">
+                    <span class="summary-number" id="stat-roles">0</span>
+                    <span class="summary-label">Roles Identified</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-number" id="stat-users">0</span>
+                    <span class="summary-label">Users Covered</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-number" id="stat-avg-ent">0</span>
+                    <span class="summary-label">Avg Entitlements/Role</span>
+                </div>
+                <div class="summary-card">
+                    <span class="summary-number" id="stat-avg-common">0%</span>
+                    <span class="summary-label">Avg Commonality</span>
+                </div>
+            </div>
+
+            <!-- Grouping Strategy Tabs -->
+            <div class="tabs" id="strategy-tabs"></div>
+
+            <!-- Role Cards Container -->
+            <div id="role-cards-container"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>RBAC Role Mining Tool &mdash; Client-Side Analysis Engine &mdash; No data leaves your browser</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
