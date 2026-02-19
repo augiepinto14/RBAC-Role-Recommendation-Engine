@@ -103,38 +103,38 @@
         <!-- Results Dashboard -->
         <section class="panel results-panel" id="results-panel" hidden>
             <div class="results-header">
-                <h2>Role Recommendations</h2>
-                <div class="results-actions">
-                    <button id="export-csv-btn" class="btn btn-secondary">Export CSV</button>
-                    <button id="export-json-btn" class="btn btn-secondary">Export JSON</button>
-                </div>
+                <h2>Optimization Results</h2>
             </div>
+            <p class="results-subtitle" id="results-subtitle"></p>
 
-            <!-- Summary Stats -->
-            <div class="summary-grid" id="summary-grid">
-                <div class="summary-card">
-                    <span class="summary-number" id="stat-roles">0</span>
-                    <span class="summary-label">Roles Identified</span>
+            <!-- Option Cards Grid -->
+            <div class="options-grid" id="options-grid"></div>
+
+            <!-- Expanded Option Detail (shown when "View Roles" is clicked) -->
+            <div class="option-detail-panel" id="option-detail-panel" hidden>
+                <div class="option-detail-header">
+                    <button class="btn btn-secondary btn-sm" id="back-to-options-btn">&#8592; Back to All Options</button>
+                    <div class="option-detail-title">
+                        <h3 id="detail-option-name"></h3>
+                        <div class="option-detail-stats" id="detail-stats"></div>
+                    </div>
+                    <div class="option-detail-actions">
+                        <button class="btn btn-secondary" id="detail-csv-btn">Export CSV</button>
+                        <button class="btn btn-secondary" id="detail-json-btn">Export JSON</button>
+                    </div>
                 </div>
-                <div class="summary-card">
-                    <span class="summary-number" id="stat-users">0</span>
-                    <span class="summary-label">Users Covered</span>
+
+                <!-- Ungrouped users warning -->
+                <div class="ungrouped-warning" id="ungrouped-warning" hidden>
+                    <strong>Ungrouped Users:</strong>
+                    <span id="ungrouped-count"></span> could not be assigned to any role group meeting the threshold.
+                    <button class="btn btn-sm btn-secondary" id="show-ungrouped-btn" style="margin-left:0.5rem">View Details</button>
+                    <div class="ungrouped-list" id="ungrouped-list" hidden></div>
                 </div>
-                <div class="summary-card">
-                    <span class="summary-number" id="stat-avg-ent">0</span>
-                    <span class="summary-label">Avg Entitlements/Role</span>
-                </div>
-                <div class="summary-card">
-                    <span class="summary-number" id="stat-avg-common">0%</span>
-                    <span class="summary-label">Avg Commonality</span>
-                </div>
+
+                <!-- Role cards for this option -->
+                <div id="option-role-cards"></div>
             </div>
-
-            <!-- Grouping Strategy Tabs -->
-            <div class="tabs" id="strategy-tabs"></div>
-
-            <!-- Role Cards Container -->
-            <div id="role-cards-container"></div>
         </section>
     </main>
 
