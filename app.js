@@ -793,7 +793,7 @@
         const outlierUsers = Object.keys(role.userOutliers || {});
         if (outlierUsers.length > 0) {
             outliersHtml = '<div class="role-section outlier-section"><h4>Exception / Individual Entitlements</h4>';
-            outliersHtml += '<p style="font-size:0.82rem;color:#92400e;margin-bottom:0.5rem;">These entitlements are unique to individual users and should be reviewed for individual access grants, not included in the role.</p>';
+            outliersHtml += '<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:0.5rem;">These entitlements are unique to individual users and should be reviewed for individual access grants, not included in the role.</p>';
             for (const uid of outlierUsers) {
                 const emp = hrByEmployee[uid];
                 const uname = emp ? `${emp['Employee First Name']} ${emp['Employee Last Name']}` : uid;
