@@ -244,6 +244,28 @@
         const allUserIds = new Set(users.map(u => u.id));
 
         // ─── PHASE 1: Generate raw candidate pool ────────────────
+        // Also build org-wide groupings to measure "overspill" — how many
+        // employees from the full HR master file match each criteria but
+        // are NOT in the uploaded target list.
+        progressText.textContent = 'Phase 1: Building org-wide index...';
+        progressBar.style.width = '5%';
+        await sleep(30);
+
+        // Build full org user objects (lightweight — just HR + key functions)
+        const allOrgUsers = hrData.map(row => ({
+            id: row['Employee ID'],
+            hr: row
+        }));
+
+        // Pre-compute org-wide group counts for every strategy
+        const orgGroupCounts = {};  // "strategyName::groupKey" → count of ALL org employees
+        for (const strat of strategies) {
+            const orgGroups = groupBy(allOrgUsers, strat.key);
+            for (const [groupKey, orgMembers] of Object.entries(orgGroups)) {
+                orgGroupCounts[`${strat.name}::${groupKey}`] = orgMembers.length;
+            }
+        }
+
         progressText.textContent = 'Phase 1: Generating candidate groups...';
         progressBar.style.width = '10%';
         await sleep(30);
@@ -277,8 +299,15 @@
                     criteria[label.trim()] = criteriaValues[idx] ? criteriaValues[idx].trim() : '';
                 });
 
+                // Overspill analysis: how many org-wide employees match this criteria?
+                const candidateId = `${strat.name}::${groupKey}`;
+                const orgTotal = orgGroupCounts[candidateId] || members.length;
+                const overspill = orgTotal - members.length;
+                // Precision: what % of the org-wide match are actually in our target list
+                const precision = members.length / orgTotal;
+
                 rawGroupData.push({
-                    id: `${strat.name}::${groupKey}`,
+                    id: candidateId,
                     strategyName: strat.name,
                     attrCount: strat.attrCount,
                     groupKey,
@@ -287,7 +316,10 @@
                     memberCount: members.length,
                     criteria,
                     roleName: criteriaValues.map(v => v.trim()).join(' - '),
-                    entCounts
+                    entCounts,
+                    orgTotal,
+                    overspill,
+                    precision
                 });
             }
         }
@@ -299,34 +331,34 @@
 
         const variantConfigs = [
             {
-                name: 'Recommended (Fewest Roles, Best Balance)',
-                description: 'Optimized to assign all users into the fewest possible roles while maintaining strong entitlement commonality across each group.',
-                weights: { coverage: 0.50, commonality: 0.25, richness: 0.15, groupSize: 0.10 },
+                name: 'Recommended (Fewest Roles, Best Precision)',
+                description: 'Optimized to assign all users into the fewest possible roles while minimizing overspill — extra org employees pulled into the role who are not in your target list.',
+                weights: { coverage: 0.35, commonality: 0.20, richness: 0.10, groupSize: 0.05, precision: 0.30 },
                 thresholdAdjust: 0, minGroupAdjust: 0
             },
             {
-                name: 'Maximum Commonality',
-                description: 'Prioritizes the highest possible entitlement alignment within each role. May produce more granular roles with tighter access consistency.',
-                weights: { coverage: 0.25, commonality: 0.55, richness: 0.10, groupSize: 0.10 },
-                thresholdAdjust: 0.05, minGroupAdjust: 0
-            },
-            {
-                name: 'Broad Coverage',
-                description: 'Focuses on covering every user with minimal gaps, accepting slightly lower commonality to reduce ungrouped users.',
-                weights: { coverage: 0.65, commonality: 0.15, richness: 0.10, groupSize: 0.10 },
-                thresholdAdjust: -0.05, minGroupAdjust: 0
-            },
-            {
-                name: 'Fine-Grained Roles',
-                description: 'Prefers specific, narrowly-scoped roles using multi-attribute grouping strategies (e.g., SNODE L3+L4+L5) for precise organizational alignment.',
-                weights: { coverage: 0.30, commonality: 0.30, richness: 0.20, groupSize: 0.20 },
+                name: 'Maximum Precision (Minimal Overspill)',
+                description: 'Prioritizes the tightest possible role criteria so that virtually no unintended employees are scoped in. May produce more roles to achieve precision.',
+                weights: { coverage: 0.20, commonality: 0.15, richness: 0.05, groupSize: 0.05, precision: 0.55 },
                 thresholdAdjust: 0, minGroupAdjust: 0,
                 preferGranular: true
             },
             {
+                name: 'Maximum Commonality',
+                description: 'Prioritizes the highest possible entitlement alignment within each role, with moderate overspill control.',
+                weights: { coverage: 0.20, commonality: 0.45, richness: 0.10, groupSize: 0.05, precision: 0.20 },
+                thresholdAdjust: 0.05, minGroupAdjust: 0
+            },
+            {
+                name: 'Broad Coverage',
+                description: 'Focuses on covering every user with minimal gaps, accepting slightly lower commonality and precision to reduce ungrouped users.',
+                weights: { coverage: 0.50, commonality: 0.15, richness: 0.10, groupSize: 0.05, precision: 0.20 },
+                thresholdAdjust: -0.05, minGroupAdjust: 0
+            },
+            {
                 name: 'Simple Grouping',
-                description: 'Favors broad, single-attribute groupings (e.g., Business Line or Job Family alone) for easier organizational mapping and maintenance.',
-                weights: { coverage: 0.45, commonality: 0.25, richness: 0.10, groupSize: 0.20 },
+                description: 'Favors broad, single-attribute groupings (e.g., Business Line or Job Family alone) for easier organizational mapping. May have higher overspill.',
+                weights: { coverage: 0.35, commonality: 0.20, richness: 0.10, groupSize: 0.15, precision: 0.20 },
                 thresholdAdjust: 0, minGroupAdjust: 0,
                 preferSimple: true
             }
@@ -440,6 +472,9 @@
                 outlierEntitlements: outlierEnts.sort((a, b) => a.commonality - b.commonality),
                 userOutliers,
                 avgCommonality,
+                orgTotal: raw.orgTotal,
+                overspill: raw.overspill,
+                precision: raw.precision,
                 bonus: 0
             });
         }
@@ -472,6 +507,7 @@
                     weights.commonality * candidate.avgCommonality +
                     weights.richness * Math.min(candidate.sharedEntitlements.length / 20, 1) +
                     weights.groupSize * Math.min(candidate.memberCount / allUserIds.size, 1) +
+                    (weights.precision || 0) * (candidate.precision || 0) +
                     (candidate.bonus || 0);
 
                 if (score > bestScore) {
@@ -495,6 +531,11 @@
         const ungroupedUsers = Array.from(uncovered);
         const totalCovered = allUserIds.size - uncovered.size;
 
+        const avgPrecision = solution.length > 0
+            ? solution.reduce((s, r) => s + (r.precision || 0), 0) / solution.length
+            : 0;
+        const totalOverspill = solution.reduce((s, r) => s + (r.overspill || 0), 0);
+
         return {
             roles: solution,
             ungroupedUsers,
@@ -505,6 +546,8 @@
             avgCommonality: solution.length > 0
                 ? solution.reduce((s, r) => s + r.avgCommonality, 0) / solution.length
                 : 0,
+            avgPrecision,
+            totalOverspill,
             totalSharedEntitlements: solution.reduce((s, r) => s + r.sharedEntitlements.length, 0),
             strategiesUsed: [...new Set(solution.map(r => r.strategyName))]
         };
@@ -514,9 +557,10 @@
     function scoreSolution(solution) {
         const normalizedRoleCount = solution.totalUsers > 0 ? solution.totalRoles / solution.totalUsers : 1;
         return (
-            solution.coveragePercent * 40 +
-            (1 - Math.min(normalizedRoleCount, 1)) * 30 +
-            solution.avgCommonality * 20 +
+            solution.coveragePercent * 30 +
+            (1 - Math.min(normalizedRoleCount, 1)) * 25 +
+            solution.avgCommonality * 15 +
+            (solution.avgPrecision || 0) * 20 +
             Math.min(solution.totalSharedEntitlements / (Math.max(solution.totalRoles, 1) * 15), 1) * 10
         );
     }
@@ -577,9 +621,13 @@
                         <span class="option-stat-value">${Math.round(sol.avgCommonality * 100)}%</span>
                         <span class="option-stat-label">Avg Commonality</span>
                     </div>
+                    <div class="option-stat ${sol.totalOverspill === 0 ? 'precision-perfect' : sol.avgPrecision >= 0.8 ? 'precision-good' : 'precision-warn'}">
+                        <span class="option-stat-value">${sol.totalOverspill}</span>
+                        <span class="option-stat-label">Overspill Users</span>
+                    </div>
                     <div class="option-stat">
-                        <span class="option-stat-value">${avgEntPerRole}</span>
-                        <span class="option-stat-label">Avg Ent/Role</span>
+                        <span class="option-stat-value">${Math.round((sol.avgPrecision || 0) * 100)}%</span>
+                        <span class="option-stat-label">Avg Precision</span>
                     </div>
                 </div>
                 <div class="option-strategies-preview">${stratChips}</div>
@@ -619,10 +667,13 @@
         const avgEntPerRole = sol.totalRoles > 0
             ? Math.round(sol.totalSharedEntitlements / sol.totalRoles)
             : 0;
+        const precisionClass = sol.totalOverspill === 0 ? 'precision-perfect' : sol.avgPrecision >= 0.8 ? 'precision-good' : 'precision-warn';
         $('detail-stats').innerHTML = `
             <span class="option-detail-stat"><strong>${sol.totalRoles}</strong> roles</span>
             <span class="option-detail-stat"><strong>${sol.totalUsersCovered}/${sol.totalUsers}</strong> users covered</span>
             <span class="option-detail-stat"><strong>${Math.round(sol.avgCommonality * 100)}%</strong> avg commonality</span>
+            <span class="option-detail-stat ${precisionClass}"><strong>${Math.round((sol.avgPrecision || 0) * 100)}%</strong> avg precision</span>
+            <span class="option-detail-stat ${precisionClass}"><strong>${sol.totalOverspill}</strong> overspill users</span>
             <span class="option-detail-stat"><strong>${sol.totalSharedEntitlements}</strong> total entitlements</span>
             <span class="option-detail-stat"><strong>${sol.strategiesUsed.length}</strong> strategies used</span>
         `;
@@ -667,11 +718,16 @@
         // Header — now includes strategy badge
         const header = document.createElement('div');
         header.className = 'role-card-header';
+        const overspillBadgeClass = role.overspill === 0 ? 'precision-perfect' : role.precision >= 0.8 ? 'precision-good' : 'precision-warn';
+        const overspillLabel = role.overspill === 0
+            ? 'No overspill'
+            : `+${role.overspill} overspill`;
         header.innerHTML = `
             <span class="role-name">${escHtml(role.roleName)}</span>
             <div class="role-meta">
                 <span class="role-strategy-label">${escHtml(role.strategyName)}</span>
-                <span class="role-badge users">${role.memberCount} users</span>
+                <span class="role-badge users">${role.memberCount} target users</span>
+                <span class="role-badge ${overspillBadgeClass}">${overspillLabel} (${role.orgTotal} org total)</span>
                 <span class="role-badge commonality">${Math.round(role.avgCommonality * 100)}% avg</span>
                 <span class="role-badge entitlements">${role.sharedEntitlements.length} entitlements</span>
                 <span class="role-chevron">&#9660;</span>
@@ -689,6 +745,20 @@
             criteriaHtml += `<span class="criteria-tag">${escHtml(label)}: ${escHtml(value)}</span>`;
         }
         criteriaHtml += '</div></div>';
+
+        // Overspill / precision section
+        let overspillHtml = '<div class="role-section"><h4>Scope Analysis (Overspill)</h4>';
+        overspillHtml += '<div class="overspill-detail">';
+        overspillHtml += `<div class="overspill-row"><span class="overspill-label">Target users in role:</span><span class="overspill-val">${role.memberCount}</span></div>`;
+        overspillHtml += `<div class="overspill-row"><span class="overspill-label">Total org employees matching criteria:</span><span class="overspill-val">${role.orgTotal}</span></div>`;
+        overspillHtml += `<div class="overspill-row"><span class="overspill-label">Overspill (extra employees auto-added):</span><span class="overspill-val ${role.overspill === 0 ? 'precision-perfect' : role.overspill <= 5 ? 'precision-good' : 'precision-warn'}">${role.overspill}</span></div>`;
+        overspillHtml += `<div class="overspill-row"><span class="overspill-label">Precision:</span><span class="overspill-val ${role.precision === 1 ? 'precision-perfect' : role.precision >= 0.8 ? 'precision-good' : 'precision-warn'}">${Math.round(role.precision * 100)}%</span></div>`;
+        if (role.overspill > 0) {
+            overspillHtml += `<p class="overspill-note">⚠ ${role.overspill} additional employee${role.overspill > 1 ? 's' : ''} in the organization match${role.overspill === 1 ? 'es' : ''} this role's HR criteria and would be automatically assigned to this role under RBAC.</p>`;
+        } else {
+            overspillHtml += `<p class="overspill-note overspill-perfect">✓ This role's criteria perfectly scope only the target users — no unintended employees would be added.</p>`;
+        }
+        overspillHtml += '</div></div>';
 
         // Shared entitlements table
         let entHtml = '<div class="role-section"><h4>Recommended Role Entitlements</h4>';
@@ -734,7 +804,7 @@
             outliersHtml += '</div>';
         }
 
-        body.innerHTML = criteriaHtml + entHtml + membersHtml + outliersHtml;
+        body.innerHTML = criteriaHtml + overspillHtml + entHtml + membersHtml + outliersHtml;
 
         card.appendChild(header);
         card.appendChild(body);
@@ -751,7 +821,8 @@
 
         const csvRows = [
             ['Option', 'Option Name', 'Role Name', 'Strategy', 'Criteria',
-             'Member Count', 'Avg Commonality %',
+             'Member Count', 'Org Total Match', 'Overspill', 'Precision %',
+             'Avg Commonality %',
              'Entitlement Application', 'Entitlement Name', 'Entitlement ID',
              'Access Level', 'Entitlement Commonality %', 'Members']
         ];
@@ -769,6 +840,9 @@
                     role.strategyName,
                     criteriaStr,
                     role.memberCount,
+                    role.orgTotal || role.memberCount,
+                    role.overspill || 0,
+                    Math.round((role.precision || 1) * 100),
                     Math.round(role.avgCommonality * 100),
                     ent.application,
                     ent.entitlementName,
@@ -785,7 +859,8 @@
             csvRows.push([
                 sol.optionIndex, sol.optionName,
                 'UNGROUPED', 'N/A', 'N/A',
-                sol.ungroupedUsers.length, 'N/A',
+                sol.ungroupedUsers.length, 'N/A', 'N/A', 'N/A',
+                'N/A',
                 'N/A', 'N/A', 'N/A', 'N/A', 'N/A',
                 sol.ungroupedUsers.join('; ')
             ]);
@@ -816,6 +891,8 @@
                 totalUsers: sol.totalUsers,
                 coveragePercent: Math.round(sol.coveragePercent * 100),
                 avgCommonality: Math.round(sol.avgCommonality * 100),
+                avgPrecision: Math.round((sol.avgPrecision || 0) * 100),
+                totalOverspill: sol.totalOverspill || 0,
                 strategiesUsed: sol.strategiesUsed
             },
             roles: sol.roles.map(role => ({
@@ -823,6 +900,9 @@
                 strategy: role.strategyName,
                 criteria: role.criteria,
                 memberCount: role.memberCount,
+                orgTotalMatch: role.orgTotal || role.memberCount,
+                overspill: role.overspill || 0,
+                precision: Math.round((role.precision || 1) * 100),
                 members: Array.from(role.memberIds),
                 avgCommonality: Math.round(role.avgCommonality * 100),
                 sharedEntitlements: role.sharedEntitlements,

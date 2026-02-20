@@ -514,6 +514,105 @@ main {
     font-weight: 500;
 }
 
+/* ===== Precision / Overspill Indicators ===== */
+.precision-perfect {
+    color: var(--success) !important;
+}
+.precision-perfect .option-stat-value,
+.precision-perfect strong {
+    color: var(--success) !important;
+}
+.precision-good {
+    color: #2563eb !important;
+}
+.precision-good .option-stat-value,
+.precision-good strong {
+    color: #2563eb !important;
+}
+.precision-warn {
+    color: var(--danger) !important;
+}
+.precision-warn .option-stat-value,
+.precision-warn strong {
+    color: var(--danger) !important;
+}
+
+.option-stat.precision-perfect {
+    border-color: #a7f3d0;
+    background: var(--success-bg);
+}
+.option-stat.precision-good {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.option-stat.precision-warn {
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+/* Overspill detail inside role cards */
+.overspill-detail {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.75rem 1rem;
+}
+
+.overspill-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+    font-size: 0.85rem;
+}
+
+.overspill-row:not(:last-of-type) {
+    border-bottom: 1px solid var(--border);
+}
+
+.overspill-label {
+    color: var(--text-secondary);
+}
+
+.overspill-val {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.overspill-val.precision-perfect { color: var(--success) !important; }
+.overspill-val.precision-good { color: #2563eb !important; }
+.overspill-val.precision-warn { color: var(--danger) !important; }
+
+.overspill-note {
+    font-size: 0.82rem;
+    color: #92400e;
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: var(--warning-bg);
+    border-radius: 4px;
+    border-left: 3px solid var(--warning);
+}
+
+.overspill-note.overspill-perfect {
+    color: #065f46;
+    background: var(--success-bg);
+    border-left-color: var(--success);
+}
+
+/* Precision badge on role header */
+.role-badge.precision-perfect {
+    background: var(--success-bg);
+    color: var(--success);
+}
+.role-badge.precision-good {
+    background: #eff6ff;
+    color: #2563eb;
+}
+.role-badge.precision-warn {
+    background: #fef2f2;
+    color: var(--danger);
+}
+
 /* ===== Role Cards ===== */
 .role-card {
     border: 1px solid var(--border);
