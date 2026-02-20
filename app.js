@@ -95,7 +95,7 @@
             for (const row of entitlementData) {
                 const eid = row['Employee ID'];
                 if (!entByEmployee[eid]) entByEmployee[eid] = new Set();
-                entByEmployee[eid].add(`${row['Entitlement ID']}|${row['Application']}|${row['Entitlement Name']}|${row['Access Level']}`);
+                entByEmployee[eid].add(`${row['Entitlement ID']}|${row['Application']}|${row['Application ID']}|${row['Application Business Unit']}|${row['Entitlement Name']}`);
             }
             entIcon.textContent = '\u2713';
             entIcon.className = 'status-icon success';
@@ -423,8 +423,9 @@
                 const entObj = {
                     entitlementId: parts[0],
                     application: parts[1],
-                    entitlementName: parts[2],
-                    accessLevel: parts[3],
+                    applicationId: parts[2],
+                    applicationBU: parts[3],
+                    entitlementName: parts[4],
                     commonality,
                     userCount: count,
                     totalUsers: raw.memberCount
@@ -450,8 +451,9 @@
                         uniqueToUser.push({
                             entitlementId: parts[0],
                             application: parts[1],
-                            entitlementName: parts[2],
-                            accessLevel: parts[3]
+                            applicationId: parts[2],
+                            applicationBU: parts[3],
+                            entitlementName: parts[4]
                         });
                     }
                 }
@@ -505,7 +507,7 @@
                 const score =
                     weights.coverage * (newlyCoveredCount / uncovered.size) +
                     weights.commonality * candidate.avgCommonality +
-                    weights.richness * Math.min(candidate.sharedEntitlements.length / 20, 1) +
+                    weights.richness * Math.min(candidate.sharedEntitlements.length / 50, 1) +
                     weights.groupSize * Math.min(candidate.memberCount / allUserIds.size, 1) +
                     (weights.precision || 0) * (candidate.precision || 0) +
                     (candidate.bonus || 0);
@@ -561,7 +563,7 @@
             (1 - Math.min(normalizedRoleCount, 1)) * 25 +
             solution.avgCommonality * 15 +
             (solution.avgPrecision || 0) * 20 +
-            Math.min(solution.totalSharedEntitlements / (Math.max(solution.totalRoles, 1) * 15), 1) * 10
+            Math.min(solution.totalSharedEntitlements / (Math.max(solution.totalRoles, 1) * 40), 1) * 10
         );
     }
 
@@ -762,15 +764,15 @@
 
         // Shared entitlements table
         let entHtml = '<div class="role-section"><h4>Recommended Role Entitlements</h4>';
-        entHtml += '<table class="ent-table"><thead><tr><th>Application</th><th>Entitlement</th><th>ID</th><th>Access Level</th><th>Commonality</th></tr></thead><tbody>';
+        entHtml += '<table class="ent-table"><thead><tr><th>App Business Unit</th><th>Application</th><th>Entitlement</th><th>Entitlement ID</th><th>Commonality</th></tr></thead><tbody>';
         for (const ent of role.sharedEntitlements) {
             const pct = Math.round(ent.commonality * 100);
             const barW = pct * 0.6;
             entHtml += `<tr>
+                <td>${escHtml(ent.applicationBU || '')}</td>
                 <td>${escHtml(ent.application)}</td>
                 <td>${escHtml(ent.entitlementName)}</td>
                 <td><code>${escHtml(ent.entitlementId)}</code></td>
-                <td>${escHtml(ent.accessLevel)}</td>
                 <td><span class="commonality-bar" style="width:${barW}px"></span>${pct}% (${ent.userCount}/${ent.totalUsers})</td>
             </tr>`;
         }
@@ -823,8 +825,9 @@
             ['Option', 'Option Name', 'Role Name', 'Strategy', 'Criteria',
              'Member Count', 'Org Total Match', 'Overspill', 'Precision %',
              'Avg Commonality %',
-             'Entitlement Application', 'Entitlement Name', 'Entitlement ID',
-             'Access Level', 'Entitlement Commonality %', 'Members']
+             'App Business Unit', 'Application', 'Application ID',
+             'Entitlement Name', 'Entitlement ID',
+             'Entitlement Commonality %', 'Members']
         ];
 
         for (const role of sol.roles) {
@@ -844,10 +847,11 @@
                     role.overspill || 0,
                     Math.round((role.precision || 1) * 100),
                     Math.round(role.avgCommonality * 100),
+                    ent.applicationBU || '',
                     ent.application,
+                    ent.applicationId || '',
                     ent.entitlementName,
                     ent.entitlementId,
-                    ent.accessLevel,
                     Math.round(ent.commonality * 100),
                     membersStr
                 ]);
@@ -861,7 +865,7 @@
                 'UNGROUPED', 'N/A', 'N/A',
                 sol.ungroupedUsers.length, 'N/A', 'N/A', 'N/A',
                 'N/A',
-                'N/A', 'N/A', 'N/A', 'N/A', 'N/A',
+                'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A',
                 sol.ungroupedUsers.join('; ')
             ]);
         }
