@@ -29,27 +29,6 @@
     </header>
 
     <main>
-        <!-- Data Status Panel -->
-        <section class="panel status-panel">
-            <h2>Data Status</h2>
-            <div class="status-grid">
-                <div class="status-card" id="hr-status">
-                    <div class="status-icon loading" id="hr-icon">&#8987;</div>
-                    <div class="status-info">
-                        <span class="status-label">HR Employee Data</span>
-                        <span class="status-value" id="hr-count">Loading...</span>
-                    </div>
-                </div>
-                <div class="status-card" id="ent-status">
-                    <div class="status-icon loading" id="ent-icon">&#8987;</div>
-                    <div class="status-info">
-                        <span class="status-label">Entitlement Records</span>
-                        <span class="status-value" id="ent-count">Loading...</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- Upload Panel -->
         <section class="panel upload-panel">
             <h2>Upload User List</h2>
@@ -137,6 +116,44 @@
 
                 <!-- Role cards for this option -->
                 <div id="option-role-cards"></div>
+            </div>
+        </section>
+
+        <!-- ABC Corporation Overview -->
+        <section class="panel overview-panel">
+            <h2>ABC Corporation: Overview</h2>
+            <div class="overview-content">
+                <div class="overview-cards">
+                    <div class="overview-card" id="hr-status">
+                        <div class="overview-icon" id="hr-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 010 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="overview-info">
+                            <span class="overview-value" id="hr-count">--</span>
+                            <span class="overview-label">Total Employees</span>
+                        </div>
+                    </div>
+                    <div class="overview-card" id="ent-status">
+                        <div class="overview-icon" id="ent-icon">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                                <polyline points="6 8 10 12 14 8 18 12"/>
+                            </svg>
+                        </div>
+                        <div class="overview-info">
+                            <span class="overview-value" id="ent-count">--</span>
+                            <span class="overview-label">Total Unique Entitlements</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="overview-timestamp" id="overview-timestamp"></div>
             </div>
         </section>
     </main>

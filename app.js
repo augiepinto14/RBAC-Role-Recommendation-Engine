@@ -21,6 +21,7 @@
     const hrCount = $('hr-count');
     const entIcon = $('ent-icon');
     const entCount = $('ent-count');
+    const overviewTimestamp = $('overview-timestamp');
     const uploadArea = $('upload-area');
     const fileInput = $('file-input');
     const sampleBtn = $('sample-btn');
@@ -74,13 +75,12 @@
             for (const row of hrData) {
                 hrByEmployee[row['Employee ID']] = row;
             }
-            hrIcon.textContent = '\u2713';
-            hrIcon.className = 'status-icon success';
-            hrCount.textContent = `${hrData.length} employees loaded`;
+            hrIcon.className = 'overview-icon success';
+            hrCount.textContent = hrData.length.toLocaleString();
+            updateOverviewTimestamp();
         } catch (e) {
-            hrIcon.textContent = '\u2717';
-            hrIcon.className = 'status-icon error';
-            hrCount.textContent = 'Failed to load';
+            hrIcon.className = 'overview-icon error';
+            hrCount.textContent = 'Error';
             throw e;
         }
     }
@@ -97,14 +97,22 @@
                 if (!entByEmployee[eid]) entByEmployee[eid] = new Set();
                 entByEmployee[eid].add(`${row['Entitlement ID']}|${row['Application']}|${row['Application ID']}|${row['Application Business Unit']}|${row['Entitlement Name']}`);
             }
-            entIcon.textContent = '\u2713';
-            entIcon.className = 'status-icon success';
-            entCount.textContent = `${entitlementData.length} entitlement records loaded`;
+            entIcon.className = 'overview-icon success';
+            entCount.textContent = entitlementData.length.toLocaleString();
+            updateOverviewTimestamp();
         } catch (e) {
-            entIcon.textContent = '\u2717';
-            entIcon.className = 'status-icon error';
-            entCount.textContent = 'Failed to load';
+            entIcon.className = 'overview-icon error';
+            entCount.textContent = 'Error';
             throw e;
+        }
+    }
+
+    // ─── Overview Timestamp ──────────────────────────────────────────
+    function updateOverviewTimestamp() {
+        if (overviewTimestamp) {
+            const now = new Date();
+            const opts = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            overviewTimestamp.textContent = `Last updated: ${now.toLocaleDateString('en-US', opts)}`;
         }
     }
 
